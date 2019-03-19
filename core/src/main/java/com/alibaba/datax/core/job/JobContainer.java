@@ -285,6 +285,9 @@ public class JobContainer extends AbstractContainer {
      * reader和writer的初始化
      */
     private void init() {
+        // init()方法：根据configuration信息初始化reader和writer插件，
+        // 涉及到jar包热加载，并调用插件init()操作方法，
+        // 最后设置reader和writer的configuration信息。
         this.jobId = this.configuration.getLong(
                 CoreConstant.DATAX_CORE_CONTAINER_JOB_ID, -1);
 
@@ -304,6 +307,9 @@ public class JobContainer extends AbstractContainer {
         this.jobWriter = this.initJobWriter(jobPluginCollector);
     }
 
+    //reader和writer插件的初始化，保存当前classLoader，并将当前线程的classLoader设置为所给classLoader，
+    // 再将当前线程的类加载器设置为保存的类加载，通过调用插件的prepare()方法实现，
+    // 每个插件都有自己的jarLoader，通过集成URLClassloader实现而来
     private void prepare() {
         this.prepareJobReader();
         this.prepareJobWriter();
@@ -384,6 +390,14 @@ public class JobContainer extends AbstractContainer {
      * 然后，为避免顺序给读写端带来长尾影响，将整合的结果shuffler掉
      */
     private int split() {
+        //a) 通过adjustChannelNumber()方法调整channel个数；
+        //b) 然后调用插件自己的split()方法，将reader和writer切分，
+        // 需要注意，writer的切分结果要参照reader的切分结果，达到切分后数目相等，才能满足1:1的通道模型；
+        // channel的计数主要是根据byte和record的限速来实现的，在split()的函数中第一步就是计算channel的大小；
+        // split()方法reader插件会根据channel的值进行拆分，但是有些reader插件可能不会参考channel的值
+        // ，writer插件会完全根据reader的插件1:1进行返回；
+        //c) 最后，mergeReaderAndWriterTaskConfigs()，负责合并reader、writer、transformer
+        // 并生成task的配置重写job.content的配置。
         this.adjustChannelNumber();
 
         if (this.needChannelNumber <= 0) {
@@ -490,6 +504,14 @@ public class JobContainer extends AbstractContainer {
      * 同时不同的执行模式调用不同的调度策略，将所有任务调度起来
      */
     private void schedule() {
+        //这步主要把上一步切分好的所有task分组。
+        // 根据task的数量和单个taskGroup支持的task数量进行配置，两者相除就可以得出taskGroup的个数；
+        // schdule()内部通过AbstractScheduler的schedule()执行，
+        // 继续执行startAllTaskGroup()方法创建所有的TaskGroupContainer组织相关的task，
+        // TaskGroupContainerRunner负责运行TaskGroupContainer执行分配的task；
+        // taskGroupContainerExecutorService启动固定的线程池用以执行TaskGroupContainerRunner对象，
+        // TaskGroupContainerRunner的run()方法调用taskGroupContainer.start()方法，
+        // 针对每个channel创建一个TaskExecutor，通过taskExecutor.doStart()启动任务。
         /**
          * 这里的全局speed和每个channel的速度设置为B/s
          */
