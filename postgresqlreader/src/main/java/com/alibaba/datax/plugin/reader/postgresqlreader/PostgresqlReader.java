@@ -10,6 +10,7 @@ import com.alibaba.datax.plugin.rdbms.util.DataBaseType;
 
 import java.util.List;
 
+//+++举个例子，我们可以看一下PostgresqlReader.java这个类中的startRead()方法
 public class PostgresqlReader extends Reader {
 
     private static final DataBaseType DATABASE_TYPE = DataBaseType.PostgreSQL;
@@ -67,6 +68,7 @@ public class PostgresqlReader extends Reader {
         public void startRead(RecordSender recordSender) {
             int fetchSize = this.readerSliceConfig.getInt(com.alibaba.datax.plugin.rdbms.reader.Constant.FETCH_SIZE);
 
+            //+++
             this.commonRdbmsReaderSlave.startRead(this.readerSliceConfig, recordSender,
                     super.getTaskPluginCollector(), fetchSize);
         }

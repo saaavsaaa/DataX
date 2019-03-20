@@ -285,9 +285,10 @@ public class JobContainer extends AbstractContainer {
      * reader和writer的初始化
      */
     private void init() {
-        // init()方法：根据configuration信息初始化reader和writer插件，
+        // +++init()方法：根据configuration信息初始化reader和writer插件，
         // 涉及到jar包热加载，并调用插件init()操作方法，
         // 最后设置reader和writer的configuration信息。
+        //主要调用了JobContainer中的initJobReader()和initJobWriter()方法
         this.jobId = this.configuration.getLong(
                 CoreConstant.DATAX_CORE_CONTAINER_JOB_ID, -1);
 
@@ -303,11 +304,13 @@ public class JobContainer extends AbstractContainer {
         JobPluginCollector jobPluginCollector = new DefaultJobPluginCollector(
                 this.getContainerCommunicator());
         //必须先Reader ，后Writer
+        //+++根据json配置文件获取插件具体的class，然后进行加载class，
+        // 获取具体的插件对象(write类似)，然后执行插件的init()方法并返回这个插件
         this.jobReader = this.initJobReader(jobPluginCollector);
         this.jobWriter = this.initJobWriter(jobPluginCollector);
     }
 
-    //reader和writer插件的初始化，保存当前classLoader，并将当前线程的classLoader设置为所给classLoader，
+    //+++reader和writer插件的初始化，保存当前classLoader，并将当前线程的classLoader设置为所给classLoader，
     // 再将当前线程的类加载器设置为保存的类加载，通过调用插件的prepare()方法实现，
     // 每个插件都有自己的jarLoader，通过集成URLClassloader实现而来
     private void prepare() {
@@ -390,7 +393,7 @@ public class JobContainer extends AbstractContainer {
      * 然后，为避免顺序给读写端带来长尾影响，将整合的结果shuffler掉
      */
     private int split() {
-        //a) 通过adjustChannelNumber()方法调整channel个数；
+        //+++a) 通过adjustChannelNumber()方法调整channel个数；
         //b) 然后调用插件自己的split()方法，将reader和writer切分，
         // 需要注意，writer的切分结果要参照reader的切分结果，达到切分后数目相等，才能满足1:1的通道模型；
         // channel的计数主要是根据byte和record的限速来实现的，在split()的函数中第一步就是计算channel的大小；
@@ -398,12 +401,18 @@ public class JobContainer extends AbstractContainer {
         // ，writer插件会完全根据reader的插件1:1进行返回；
         //c) 最后，mergeReaderAndWriterTaskConfigs()，负责合并reader、writer、transformer
         // 并生成task的配置重写job.content的配置。
+        //主要做三件事：
+        //1）adjustChannelNumber()
+        //2）doReaderSplit() & doWriterSplit()
+        //3）mergeReaderAndWriterTaskConfigs
         this.adjustChannelNumber();
 
         if (this.needChannelNumber <= 0) {
             this.needChannelNumber = 1;
         }
 
+        //+++调用reader和writer插件中的split方法，获取readTask和writerTask，
+        // 而这个split方法最终调用了ReaderSplitUtil.doSplit()方法
         List<Configuration> readerTaskConfigs = this
                 .doReaderSplit(this.needChannelNumber);
         int taskNumber = readerTaskConfigs.size();
@@ -416,6 +425,8 @@ public class JobContainer extends AbstractContainer {
         /**
          * 输入是reader和writer的parameter list，输出是content下面元素的list
          */
+        //+++一一对应合并readerTask，writerTask，transformer并把结果赋值给 job.content以便下一步schedule()调用
+        //例job.json里面配置的channel数是15，操作一张MySql的表，表里大概有3100条数据。那么根据框架可以推得needChannelNumber为 15*5=75（单表要乘以5），切分的数量也是75，然后生成75个配置，配置里主要需要注意的就是querySql
         List<Configuration> contentConfig = mergeReaderAndWriterTaskConfigs(
                 readerTaskConfigs, writerTaskConfigs, transformerList);
 
@@ -427,6 +438,11 @@ public class JobContainer extends AbstractContainer {
         return contentConfig.size();
     }
 
+    //+++1）获取需要多少个channel数，通过adjustChannelNumber() 设置 needChannelNumber，这个方法做了3件事来确定这个needChannelNumber值：
+    //•	needChannelNumberByByte = (globalLimitedByteSpeed / channelLimitedByteSpeed)
+    //needChannelNumberByRecord = (globalLimitedRecordSpeed / channelLimitedRecordSpeed)
+    //•	上面两个值取最小赋给 needChannelNumber
+    //•	如果这时候 needChannelNumber 已经有值了就返回，没有值就找 job.setting.speed.channel 赋值给 needChannelNumber，不然报错
     private void adjustChannelNumber() {
         int needChannelNumberByByte = Integer.MAX_VALUE;
         int needChannelNumberByRecord = Integer.MAX_VALUE;
@@ -503,8 +519,11 @@ public class JobContainer extends AbstractContainer {
      * schedule首先完成的工作是把上一步reader和writer split的结果整合到具体taskGroupContainer中,
      * 同时不同的执行模式调用不同的调度策略，将所有任务调度起来
      */
+    //+++例：比方说一个作业配置了20个并发。Splict() 100个task，根据20个并发，默认5个并发/taskGroup，得出一共4个TaskGroup。
+    //根据这些，我们得出结论：4个TaskGroup平分切好的100个task，每个taskGroup 25 个task，并且有5个并发运行。
+    //主要做2件事：分组并启动
     private void schedule() {
-        //这步主要把上一步切分好的所有task分组。
+        //+++这步主要把上一步切分好的所有task分组。
         // 根据task的数量和单个taskGroup支持的task数量进行配置，两者相除就可以得出taskGroup的个数；
         // schdule()内部通过AbstractScheduler的schedule()执行，
         // 继续执行startAllTaskGroup()方法创建所有的TaskGroupContainer组织相关的task，
@@ -526,7 +545,13 @@ public class JobContainer extends AbstractContainer {
         /**
          * 通过获取配置信息得到每个taskGroup需要运行哪些tasks任务
          */
-
+        //+++1）先来看下分组，分组是调用了assignFairly()这个方法，在这个方法之前，
+        // 先调整needChannelNumber的值，从上一步split()方法获得的needChannelNumber和task的数量，
+        // 这两个值取一个小的重新赋值给needChannelNumber。
+        //然后进入这个assignFairly()，可以看到这个里面还做了3件事：
+        // 第一，确定taskGroupNumber，
+        // 第二，做分组分配，
+        // 第三，做分组优化。
         List<Configuration> taskGroupConfigs = JobAssignUtil.assignFairly(this.configuration,
                 this.needChannelNumber, channelsPerTaskGroup);
 
@@ -554,6 +579,7 @@ public class JobContainer extends AbstractContainer {
 
             this.startTransferTimeStamp = System.currentTimeMillis();
 
+            // startAllTaskGroup
             scheduler.schedule(taskGroupConfigs);
 
             this.endTransferTimeStamp = System.currentTimeMillis();
@@ -751,6 +777,8 @@ public class JobContainer extends AbstractContainer {
     private List<Configuration> doReaderSplit(int adviceNumber) {
         classLoaderSwapper.setCurrentThreadClassLoader(LoadUtil.getJarLoader(
                 PluginType.READER, this.readerPluginName));
+
+        //ReaderSplitUtil.doSplit()
         List<Configuration> readerSlicesConfigs =
                 this.jobReader.split(adviceNumber);
         if (readerSlicesConfigs == null || readerSlicesConfigs.size() <= 0) {

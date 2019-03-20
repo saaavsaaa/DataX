@@ -17,6 +17,15 @@ public final class ReaderSplitUtil {
     private static final Logger LOG = LoggerFactory
             .getLogger(ReaderSplitUtil.class);
 
+    //•	先判断是tableMode还是querySqlMode
+    //•	如果是querySqlMode，那么从配置文件获取querySql然后逐一配置到List splittedConfigs中去
+    //•	如果是tableMode，判断是否需要切分，如果需要切分那么先计算出
+    // eachTableShouldSplittedNumber = ceil(1.0 * adviceNumber / tableNumber)，
+    // 如果只有一张表eachTableShouldSplittedNumber = eachTableShouldSplittedNumber * 5，
+    // 然后根据这个 eachTableShouldSplittedNumber 这个值调用
+    // SingleTableSplitUtil.splitSingleTable(tempSlice, eachTableShouldSplittedNumber)
+    // 切分并得到所有分片的配置加到splittedConfigs中去
+    //•	如果无需切分，那么就从配置信息获取jdbc，column，where等组成配置加到splittedConfigs中去
     public static List<Configuration> doSplit(
             Configuration originalSliceConfig, int adviceNumber) {
         boolean isTableMode = originalSliceConfig.getBool(Constant.IS_TABLE_MODE).booleanValue();

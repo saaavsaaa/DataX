@@ -227,6 +227,9 @@ public class TaskGroupContainer extends AbstractContainer {
                     Configuration taskConfigForRun = taskMaxRetryTimes > 1 ? taskConfig.clone() : taskConfig;
                 	TaskExecutor taskExecutor = new TaskExecutor(taskConfigForRun, attemptCount);
                     taskStartTimeMap.put(taskId, System.currentTimeMillis());
+
+                    //+++最重要的就是在红色框出来的代码，即taskExecutor.doStart()方法，在这里启动了真正读写的task了，
+                    // 看下这个doStart()方法
                 	taskExecutor.doStart();
 
                     iterator.remove();
@@ -414,7 +417,7 @@ public class TaskGroupContainer extends AbstractContainer {
             this.writerThread = new Thread(writerRunner,
                     String.format("%d-%d-%d-writer",
                             jobId, taskGroupId, this.taskId));
-            //通过设置thread的contextClassLoader，即可实现同步和主程序不通的加载器
+            //+++通过设置thread的contextClassLoader，即可实现同步和主程序不通的加载器
             this.writerThread.setContextClassLoader(LoadUtil.getJarLoader(
                     PluginType.WRITER, this.taskConfig.getString(
                             CoreConstant.JOB_WRITER_NAME)));
@@ -434,6 +437,7 @@ public class TaskGroupContainer extends AbstractContainer {
                             CoreConstant.JOB_READER_NAME)));
         }
 
+        //this.writerThread.start() 和this.readerThread.start() 也就是调用了插件Writer.Task和Reader.Task开始读写了
         public void doStart() {
             this.writerThread.start();
 

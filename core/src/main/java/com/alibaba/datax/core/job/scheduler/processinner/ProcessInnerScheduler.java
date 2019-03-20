@@ -20,6 +20,8 @@ public abstract class ProcessInnerScheduler extends AbstractScheduler {
         super(containerCommunicator);
     }
 
+    //+++这个方法中先启动了一个固定的线程池，然后启动逐一执行taskGroupContainer
+    //被启动的TaskGroupContainer，也就是这个类的start()方法
     @Override
     public void startAllTaskGroup(List<Configuration> configurations) {
         this.taskGroupContainerExecutorService = Executors

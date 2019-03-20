@@ -49,9 +49,12 @@ public final class JobAssignUtil {
         }
 
         LinkedHashMap<String, List<Integer>> resourceMarkAndTaskIdMap = parseAndGetResourceMarkAndTaskIdMap(contentConfig);
+
+        //doAssign()方法，这个方法主要就是根据传入的resourceMarkAndTaskIdMap和taskGroupNumber来把task分配到taskGroup中去。
         List<Configuration> taskGroupConfig = doAssign(resourceMarkAndTaskIdMap, configuration, taskGroupNumber);
 
         // 调整 每个 taskGroup 对应的 Channel 个数（属于优化范畴）
+        //adjustChannelNumPerTaskGroup()，这个方法主要就是把整除之后多余的余数个task的组多加一个channel，从而使整个分配最优化。
         adjustChannelNumPerTaskGroup(taskGroupConfig, channelNumber);
         return taskGroupConfig;
     }

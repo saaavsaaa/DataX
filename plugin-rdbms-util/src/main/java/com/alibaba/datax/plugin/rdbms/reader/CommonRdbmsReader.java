@@ -206,6 +206,8 @@ public class CommonRdbmsReader {
                 long lastTime = System.nanoTime();
                 while (rs.next()) {
                     rsNextUsedTime += (System.nanoTime() - lastTime);
+
+                    //+++最重要的方法就是this.transportOneRecord()
                     this.transportOneRecord(recordSender, rs,
                             metaData, columnNumber, mandatoryEncoding, taskPluginCollector);
                     lastTime = System.nanoTime();
@@ -235,6 +237,9 @@ public class CommonRdbmsReader {
                 ResultSetMetaData metaData, int columnNumber, String mandatoryEncoding, 
                 TaskPluginCollector taskPluginCollector) {
             Record record = buildRecord(recordSender,rs,metaData,columnNumber,mandatoryEncoding,taskPluginCollector); 
+
+            //+++
+            //这里的recordSender是 BufferedRecordExchanger，在TaskExcutor初始化的时候设置的也就是generateRunner的时候
             recordSender.sendToWriter(record);
             return record;
         }

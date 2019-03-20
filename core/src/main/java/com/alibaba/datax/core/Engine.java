@@ -56,7 +56,8 @@ public class Engine {
         if (isJob) {
             allConf.set(CoreConstant.DATAX_CORE_CONTAINER_JOB_MODE, RUNTIME_MODE);
 
-            // obContainer.start()方法主要里面主要顺序执行如下图的方法，而最重要的就是 split(), schedule()
+            // +++obContainer.start()方法主要里面主要顺序执行如下图的方法，而最重要的就是 split(), schedule()
+            //https://blog.csdn.net/m0_37877588/article/details/86928727
             container = new JobContainer(allConf);
             instanceId = allConf.getLong(
                     CoreConstant.DATAX_CORE_CONTAINER_JOB_ID, 0);
@@ -137,7 +138,7 @@ public class Engine {
         RUNTIME_MODE = cl.getOptionValue("mode");
 
         //https://blog.csdn.net/m0_37877588/article/details/86928727
-        //解析生成configration
+        //+++解析生成configration
         //        ConfigParser.parse()这个方法主要做以下三件事，然后生成一个configration用来执行start()方法：
         //1）	解析job的配置信息，由启动参数指定job.json文件。
         //2）	解析DataX自带配置信息，由默认指定的core.json文件。

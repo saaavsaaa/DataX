@@ -52,6 +52,11 @@ public abstract class AbstractScheduler {
         this.containerCommunicator.registerCommunication(configurations);
 
         int totalTasks = calculateTaskCount(configurations);
+
+        //JobContainer.schedule()方法分配完之后做的事情，就是调用StandAloneScheduler的schedule()方法，
+        // 也就是AbstractScheduler.schedule()，
+        // 而这个方法中最主要的就是调用了startAllTaskGroup(configurations)来启动所有任务组。
+        //startAllTaskGroup()这个方法（ProcessInnerScheduler. startAllTaskGroup()
         startAllTaskGroup(configurations);
 
         Communication lastJobContainerCommunication = new Communication();
