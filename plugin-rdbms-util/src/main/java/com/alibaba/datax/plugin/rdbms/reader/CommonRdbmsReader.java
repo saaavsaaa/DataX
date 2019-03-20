@@ -238,8 +238,8 @@ public class CommonRdbmsReader {
                 TaskPluginCollector taskPluginCollector) {
             Record record = buildRecord(recordSender,rs,metaData,columnNumber,mandatoryEncoding,taskPluginCollector); 
 
-            //+++
-            //这里的recordSender是 BufferedRecordExchanger，在TaskExcutor初始化的时候设置的也就是generateRunner的时候
+            //+++这里的recordSender是 BufferedRecordExchanger，在TaskExcutor初始化的时候设置TaskGroupContainer.generateRunner
+            //BufferedRecordExchanger. sendToWriter()
             recordSender.sendToWriter(record);
             return record;
         }

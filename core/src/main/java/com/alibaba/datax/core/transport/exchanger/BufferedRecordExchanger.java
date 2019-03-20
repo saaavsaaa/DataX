@@ -77,6 +77,7 @@ public class BufferedRecordExchanger implements RecordSender, RecordReceiver {
 		}
 	}
 
+	//+++最主要的就是flush()方法
 	@Override
 	public void sendToWriter(Record record) {
 		if(shutdown){
@@ -92,6 +93,7 @@ public class BufferedRecordExchanger implements RecordSender, RecordReceiver {
 
 		boolean isFull = (this.bufferIndex >= this.bufferSize || this.memoryBytes.get() + record.getMemorySize() > this.byteCapacity);
 		if (isFull) {
+			//+++flush方法中调用了Channel的pushAll()
 			flush();
 		}
 
@@ -105,6 +107,8 @@ public class BufferedRecordExchanger implements RecordSender, RecordReceiver {
 		if(shutdown){
 			throw DataXException.asDataXException(CommonErrorCode.SHUT_DOWN_TASK, "");
 		}
+
+		//+++pushAll() --> statPush()方法主要就是限速
 		this.channel.pushAll(this.buffer);
 		this.buffer.clear();
 		this.bufferIndex = 0;

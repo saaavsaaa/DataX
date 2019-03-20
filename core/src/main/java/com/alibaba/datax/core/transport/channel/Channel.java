@@ -173,6 +173,9 @@ public abstract class Channel {
         return size;
     }
 
+    //+++限速的逻辑
+    //channel初始化的时候有两个值byteSpeed和recordSpeed，这两个值就是每秒限制的byte数和每秒限制的record条数
+    //通过这两个参数，通过比较和判断计算出需要休眠的时间，从而达到限速
     private void statPush(long recordSize, long byteSize) {
         currentCommunication.increaseCounter(CommunicationTool.READ_SUCCEED_RECORDS,
                 recordSize);

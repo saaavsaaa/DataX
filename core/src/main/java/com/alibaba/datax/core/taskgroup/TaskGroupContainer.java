@@ -482,6 +482,7 @@ public class TaskGroupContainer extends AbstractContainer {
                             PluginType.READER);
 
                     RecordSender recordSender;
+                    //+++如果传入的第二个参数有效，那么new一个BufferedRecordTransformerExchanger
                     if (transformerInfoExecs != null && transformerInfoExecs.size() > 0) {
                         recordSender = new BufferedRecordTransformerExchanger(taskGroupId, this.taskId, this.channel,this.taskCommunication ,pluginCollector, transformerInfoExecs);
                     } else {
